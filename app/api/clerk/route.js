@@ -2,6 +2,7 @@ import { Webhook } from "svix";
 import connectDB from "@/config/db";
 import User from "@/models/User";
 import { headers } from "next/headers";
+import { NextRequest } from "next/server";
 
 export async function POST(req) {
     const wh = new Webhook(process.env.SIGNING_SECRET)
@@ -23,15 +24,28 @@ export async function POST(req) {
         _id: data.id,
         email: data.email_addresses[0].email_address,
         name: `${data.first_name} ${data.last_name}`,
-        image: data.image_url
+        image: data.image_url,
+    };
+
+    await connectDB();
+
+    switch (type) {
+        case 'user.created':
+            await User.create(userData)
+            break;
+
+
+        case 'user.updated':
+            await User.findByIdAndUpdate(data.id, userData)
+            break;    
+
+        case 'user.deleted':
+            await User.findByIdAndDelete(data.id)
+            break;  
+
+        default:
+            break;
     }
 
-    // Data to be accesses by the User
-
-    const dataAccessed = {
-        _id: data.id.value,
-        email: email.email_addresses.value,
-        name: `${data.first_name.value} ${data.last_name.value}`,
-        image: data.image_url.value
-    }
+    return NextRequest.json({message: "Event received"});
 }
